@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: expenses
+    runtime: python
+    region: singapore
+    buildCommand: bash build.sh
+    startCommand: cd backend && gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --preload
+    envVars:
+      - key: RENDER
+        value: "true"
+      - key: MONGODB_URI
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: SENDER_EMAIL
+        sync: false
+      - key: SENDER_PASSWORD
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11.11"
+      - key: NODE_VERSION
+        value: "20"
