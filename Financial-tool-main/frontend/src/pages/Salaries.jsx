@@ -62,8 +62,8 @@ export default function Salaries() {
     const getEmpMonthData = (emp) => {
         const monthly = Number(emp.salary_per_month || 0);
         const payments = (emp.salary_payments || []).filter(sp => {
-            const m = sp.month || sp.salary_month || '';
-            return m.startsWith(curMonth);
+            const m = (sp.salary_month || sp.month || '').slice(0, 7);
+            return m === curMonth;
         });
         const paid = payments.reduce((s, sp) => s + (sp.status === 'pending' ? 0 : Number(sp.amount_paid || 0)), 0);
         // Pending: if status="pending", full processed_salary is pending

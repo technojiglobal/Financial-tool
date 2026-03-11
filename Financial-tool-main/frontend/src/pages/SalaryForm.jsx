@@ -59,20 +59,29 @@ export default function SalaryForm() {
                 date: form.payment_date,
                 total_working_days: form.total_working_days,
                 days_attended: form.days_attended,
-                processed_salary: processedSalary
+                processed_salary: processedSalary,
+                amount_paid: form.status === 'pending' ? 0 : Number(form.amount_paid)
             });
             navigate('/salaries');
         } catch (err) { alert(err.message); }
         finally { setLoading(false); }
     };
 
-    // Auto-fill amount when days change (only if amount hasn't been manually edited or is empty)
+    // Auto-fill amount when days change (respects pending status)
     const handleDaysChange = (key, val) => {
         const newForm = { ...form, [key]: val };
         const newTotalDays = Math.max(1, Number(key === 'total_working_days' ? val : newForm.total_working_days) || 1);
-        const newDaysAttended = Math.min(newTotalDays, Math.max(0, Number(key === 'days_attended' ? val : newForm.days_attended) || 0));
+        let newDaysAttended = Math.max(0, Number(key === 'days_attended' ? val : newForm.days_attended) || 0);
+        // Clamp days_attended if total_working_days was reduced below current days_attended
+        if (newDaysAttended > newTotalDays) {
+            newDaysAttended = newTotalDays;
+            newForm.days_attended = String(newTotalDays);
+        }
         const newProcessed = Math.round((baseSalary / newTotalDays) * newDaysAttended * 100) / 100;
-        newForm.amount_paid = String(newProcessed);
+        // Only auto-fill amount if status is not pending
+        if (newForm.status !== 'pending') {
+            newForm.amount_paid = String(newProcessed);
+        }
         setForm(newForm);
     };
 
@@ -184,6 +193,11 @@ export default function SalaryForm() {
                                 {form.status !== 'pending' && processedSalary > 0 && Number(form.amount_paid) < processedSalary && Number(form.amount_paid) > 0 && (
                                     <span style={{ fontSize: '0.72rem', color: '#dc2626', marginTop: 4, display: 'block' }}>
                                         ⚠️ Paying {fmt(form.amount_paid)} is less than processed salary {fmt(processedSalary)}. The difference ({fmt(processedSalary - Number(form.amount_paid))}) will be added to pending.
+                                    </span>
+                                )}
+                                {form.status !== 'pending' && Number(form.amount_paid) > processedSalary && processedSalary > 0 && (
+                                    <span style={{ fontSize: '0.72rem', color: '#f59e0b', marginTop: 4, display: 'block' }}>
+                                        ℹ️ Paying {fmt(form.amount_paid)} which is more than the processed salary {fmt(processedSalary)}.
                                     </span>
                                 )}
                             </div>
