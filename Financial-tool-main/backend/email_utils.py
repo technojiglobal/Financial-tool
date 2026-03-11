@@ -2,7 +2,7 @@ import os
 import resend
 
 # Resend API key — set via environment variable in production
-RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "re_WsrX9pVY_2JJykcd67mcyuefsTo7zMYrW")
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 resend.api_key = RESEND_API_KEY
 
 # Sender address — Resend free tier uses onboarding@resend.dev

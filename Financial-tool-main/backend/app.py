@@ -7,10 +7,19 @@ from flask_cors import CORS
 sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "technoji-secret-key-change-in-production")
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
+if not app.config["SECRET_KEY"]:
+    import warnings
+    warnings.warn("SECRET_KEY not set — using fallback. Set it in production!")
+    app.config["SECRET_KEY"] = "change-me-in-production"
 
-# Allow all origins — auth uses JWT tokens in headers, not cookies
-CORS(app)
+# Restrict CORS to known origins
+ALLOWED_ORIGINS = [
+    "https://expenses-phi-eight.vercel.app",
+    "https://expenses-y23t.onrender.com",
+    "http://localhost:5173",
+]
+CORS(app, origins=ALLOWED_ORIGINS)
 
 
 

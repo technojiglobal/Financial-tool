@@ -6,7 +6,7 @@ import os
 
 cron_bp = Blueprint("cron", __name__)
 
-CRON_SECRET = os.environ.get("CRON_SECRET", "technoji-cron-secret")
+CRON_SECRET = os.environ.get("CRON_SECRET", "")
 
 # Document chain: what comes after each type
 NEXT_DOC_TYPE = {

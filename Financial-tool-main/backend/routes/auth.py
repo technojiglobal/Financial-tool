@@ -8,7 +8,7 @@ from db import db, next_id
 IST = timezone(timedelta(hours=5, minutes=30))
 
 auth_bp = Blueprint("auth", __name__)
-SECRET = os.environ.get("SECRET_KEY", "technoji-secret-key-change-in-production")
+SECRET = os.environ.get("SECRET_KEY", "")
 RECOVERY_KEY = "$2b$12$jbjGELRmOY4oPTeMIIiMBeg34DrC/iAJnVIteR3GdmPwlvPf62wwS"
 
 
