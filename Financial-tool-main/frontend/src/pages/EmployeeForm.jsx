@@ -13,7 +13,7 @@ export default function EmployeeForm() {
         name: '', employee_code: '', email: '', phone: '',
         role: '', department: '', employee_type: 'Full-time', date_joined: '',
         monthly_leaves: '', yearly_leaves: '',
-        salary_per_month: '', working_days: '22', salary_breakdown: ''
+        salary_per_month: '', salary_breakdown: ''
     });
     const [loading, setLoading] = useState(false);
 
@@ -28,7 +28,7 @@ export default function EmployeeForm() {
                     employee_type: e.employee_type || 'Full-time',
                     date_joined: e.date_joined || '',
                     monthly_leaves: e.monthly_leaves || '', yearly_leaves: e.yearly_leaves || '',
-                    salary_per_month: e.salary_per_month || '', working_days: e.working_days || '22',
+                    salary_per_month: e.salary_per_month || '',
                     salary_breakdown: e.salary_breakdown || ''
                 });
             });
@@ -141,10 +141,6 @@ export default function EmployeeForm() {
                                     <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.9rem' }}>₹</span>
                                     <input type="number" min="0" step="any" className="form-control" style={{ paddingLeft: 32 }} value={form.salary_per_month} onChange={e => set('salary_per_month', e.target.value)} required placeholder="e.g. 25000" />
                                 </div>
-                            </div>
-                            <div className="form-group">
-                                <label>Working Days / Month</label>
-                                <input type="number" min="1" max="31" className="form-control" value={form.working_days} onChange={e => set('working_days', e.target.value)} placeholder="e.g. 22" />
                             </div>
                         </div>
                         <div className="form-group">

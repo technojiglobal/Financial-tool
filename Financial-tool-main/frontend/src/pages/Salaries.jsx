@@ -65,17 +65,22 @@ export default function Salaries() {
             const m = sp.month || sp.salary_month || '';
             return m.startsWith(curMonth);
         });
-        const paid = payments.reduce((s, sp) => s + Number(sp.amount_paid || 0), 0);
-        const pending = Math.max(0, monthly - paid);
+        const paid = payments.reduce((s, sp) => s + (sp.status === 'pending' ? 0 : Number(sp.amount_paid || 0)), 0);
+        // Pending: if status="pending", full processed_salary is pending
+        const pending = payments.reduce((s, sp) => {
+            const processed = Number(sp.processed_salary || sp.amount_paid || 0);
+            const paidAmt = Number(sp.amount_paid || 0);
+            if (sp.status === 'pending') return s + processed;
+            return s + Math.max(0, processed - paidAmt);
+        }, 0);
         return { monthly, paid, pending, payments };
     };
 
     // Filter + search
     const filteredEmployees = employees.filter(emp => {
-        const { paid, monthly } = getEmpMonthData(emp);
-        if (filter === 'fully_paid' && !(paid >= monthly && monthly > 0)) return false;
-        if (filter === 'partially_paid' && !(paid > 0 && paid < monthly)) return false;
-        if (filter === 'pending' && paid !== 0) return false;
+        const { pending, payments } = getEmpMonthData(emp);
+        if (filter === 'fully_paid' && !(pending === 0 && payments.length > 0)) return false;
+        if (filter === 'pending' && !(pending > 0)) return false;
         if (search) {
             const q = search.toLowerCase();
             if (!(emp.name || '').toLowerCase().includes(q) && !(emp.employee_code || '').toLowerCase().includes(q)) return false;
@@ -138,7 +143,7 @@ export default function Salaries() {
 
                 {/* Filter Tabs */}
                 <div className="filter-tabs">
-                    {[['all', 'All'], ['fully_paid', 'Fully Paid'], ['partially_paid', 'Partially Paid'], ['pending', 'Pending']].map(([key, label]) => (
+                    {[['all', 'All'], ['fully_paid', 'Fully Paid'], ['pending', 'Pending']].map(([key, label]) => (
                         <button key={key} className={`filter-tab ${filter === key ? 'active' : ''}`} onClick={() => setFilter(key)}>{label}</button>
                     ))}
                 </div>
@@ -155,13 +160,12 @@ export default function Salaries() {
                                 <th>Actual Salary</th>
                                 <th>Paid Salary</th>
                                 <th>Pending Salary</th>
-                                <th>Working Days</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {filteredEmployees.length === 0 ? (
-                                <tr><td colSpan={7}>
+                                <tr><td colSpan={6}>
                                     <div className="empty-state">
                                         <div className="empty-icon">👥</div>
                                         <h3>No employees found</h3>
@@ -189,7 +193,6 @@ export default function Salaries() {
                                         <td style={{ fontWeight: 600 }}>{fmt(monthly)}</td>
                                         <td style={{ fontWeight: 600, color: '#10B981' }}>{fmt(paid)}</td>
                                         <td style={{ fontWeight: 600, color: pending > 0 ? '#EF4444' : '#10B981' }}>{fmt(pending)}</td>
-                                        <td style={{ textAlign: 'center' }}>{emp.working_days || 22}</td>
                                         <td>
                                             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                                                 <Link to={`/salaries/${emp.id}/details`} className="btn btn-sm btn-outline" title="View History" style={{ padding: '4px 8px' }}>👁️</Link>
@@ -214,8 +217,22 @@ export default function Salaries() {
             {viewEmp && (() => {
                 const { monthly, paid, pending, payments } = getEmpMonthData(viewEmp);
                 const allPayments = (viewEmp.salary_payments || []).sort((a, b) => (b.date || b.payment_date || '').localeCompare(a.date || a.payment_date || ''));
-                const totalAllPaid = allPayments.reduce((s, sp) => s + Number(sp.amount_paid || 0), 0);
-                const totalAllPending = Math.max(0, monthly - totalAllPaid);
+                const totalAllPaid = allPayments.reduce((s, sp) => s + (sp.status === 'pending' ? 0 : Number(sp.amount_paid || 0)), 0);
+                const totalAllPending = allPayments.reduce((s, sp) => {
+                    const processed = Number(sp.processed_salary || sp.amount_paid || 0);
+                    const paidAmt = Number(sp.amount_paid || 0);
+                    if (sp.status === 'pending') return s + processed;
+                    return s + Math.max(0, processed - paidAmt);
+                }, 0);
+
+                const formatMonth = (m) => {
+                    if (!m) return '—';
+                    try {
+                        const [y, mo] = m.split('-');
+                        const mNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                        return `${mNames[parseInt(mo) - 1]} ${y}`;
+                    } catch { return m; }
+                };
 
                 return (
                     <div style={{
@@ -277,6 +294,7 @@ export default function Salaries() {
                                         <table className="data-table">
                                             <thead>
                                                 <tr>
+                                                    <th>Salary Month</th>
                                                     <th>Payment Date</th>
                                                     <th>Amount Paid</th>
                                                     <th>Payment Notes</th>
@@ -286,6 +304,9 @@ export default function Salaries() {
                                             <tbody>
                                                 {allPayments.map(sp => (
                                                     <tr key={sp.id}>
+                                                        <td style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                                                            {formatMonth(sp.salary_month || sp.month)}
+                                                        </td>
                                                         <td style={{ fontSize: '0.85rem' }}>
                                                             📅 {sp.payment_date || sp.date || '—'}
                                                         </td>

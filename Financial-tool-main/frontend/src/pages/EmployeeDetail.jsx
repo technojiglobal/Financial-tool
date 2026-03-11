@@ -115,15 +115,26 @@ export default function EmployeeDetail() {
         (b.payment_date || b.date || '').localeCompare(a.payment_date || a.date || '')
     );
     const monthly = Number(employee.salary_per_month || 0);
-    const totalPaid = Number(employee.total_paid || 0);
-    const currentPending = Math.max(0, monthly - totalPaid);
+    const totalPaid = allPayments.reduce((s, sp) => s + (sp.status === 'pending' ? 0 : Number(sp.amount_paid || 0)), 0);
 
-    // Compute running pending balance for the table (chronological order, then reverse for display)
+    // Compute pending: if status="pending", full processed_salary is pending
+    // If status="paid", pending = max(0, processed_salary - amount_paid)
+    const totalPending = allPayments.reduce((sum, sp) => {
+        const processed = Number(sp.processed_salary || sp.amount_paid || 0);
+        const paid = Number(sp.amount_paid || 0);
+        if (sp.status === 'pending') return sum + processed;
+        return sum + Math.max(0, processed - paid);
+    }, 0);
+
+    // Running balance for table display
     const chronological = [...allPayments].reverse();
-    let runningPaid = 0;
+    let runningPending = 0;
     const paymentsWithBalance = chronological.map(sp => {
-        runningPaid += Number(sp.amount_paid || 0);
-        return { ...sp, pendingBalance: Math.max(0, monthly - runningPaid) };
+        const processed = Number(sp.processed_salary || sp.amount_paid || 0);
+        const paid = Number(sp.amount_paid || 0);
+        const paymentPending = sp.status === 'pending' ? processed : Math.max(0, processed - paid);
+        runningPending += paymentPending;
+        return { ...sp, pendingBalance: runningPending, paymentPending };
     }).reverse();
 
     return (
@@ -188,7 +199,7 @@ export default function EmployeeDetail() {
                 {[
                     { label: 'Total Actual Salary', value: fmt(monthly), color: '#715FF1', bg: '#F0ECFF', icon: '🏦' },
                     { label: 'Total Paid', value: fmt(totalPaid), color: '#10B981', bg: '#D1FAE5', icon: '✅' },
-                    { label: 'Current Pending', value: fmt(currentPending), color: currentPending > 0 ? '#EF4444' : '#10B981', bg: currentPending > 0 ? '#FEE2E2' : '#D1FAE5', icon: '📋' },
+                    { label: 'Current Pending', value: fmt(totalPending), color: totalPending > 0 ? '#EF4444' : '#10B981', bg: totalPending > 0 ? '#FEE2E2' : '#D1FAE5', icon: '📋' },
                 ].map((c, i) => (
                     <div key={i} className="card" style={{
                         padding: '22px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -226,16 +237,30 @@ export default function EmployeeDetail() {
                         <table className="data-table">
                             <thead>
                                 <tr>
+                                    <th>Salary Month</th>
                                     <th>Payment Date</th>
                                     <th>Amount Paid</th>
-                                    <th>Pending Balance</th>
+                                    <th>Processed Salary</th>
+                                    <th>Pending</th>
                                     <th>Payment Notes</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {paymentsWithBalance.map(sp => (
+                                {paymentsWithBalance.map(sp => {
+                                    const formatMonth = (m) => {
+                                        if (!m) return '—';
+                                        try {
+                                            const [y, mo] = m.split('-');
+                                            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                            return `${monthNames[parseInt(mo) - 1]} ${y}`;
+                                        } catch { return m; }
+                                    };
+                                    return (
                                     <tr key={sp.id}>
+                                        <td style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                                            {formatMonth(sp.salary_month || sp.month)}
+                                        </td>
                                         <td>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.88rem' }}>
                                                 <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>📅</span>
@@ -243,7 +268,8 @@ export default function EmployeeDetail() {
                                             </div>
                                         </td>
                                         <td style={{ fontWeight: 700, color: '#10B981', fontSize: '0.92rem' }}>{fmt(sp.amount_paid)}</td>
-                                        <td style={{ fontWeight: 600, color: sp.pendingBalance > 0 ? '#EF4444' : '#10B981', fontSize: '0.88rem' }}>{fmt(sp.pendingBalance)}</td>
+                                        <td style={{ fontWeight: 600, color: '#0369a1', fontSize: '0.88rem' }}>{fmt(sp.processed_salary || sp.amount_paid)}</td>
+                                        <td style={{ fontWeight: 600, color: sp.paymentPending > 0 ? '#EF4444' : '#10B981', fontSize: '0.88rem' }}>{fmt(sp.paymentPending)}</td>
                                         <td style={{
                                             fontSize: '0.82rem', color: 'var(--text-muted)', maxWidth: 250,
                                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -266,7 +292,8 @@ export default function EmployeeDetail() {
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
@@ -287,7 +314,6 @@ export default function EmployeeDetail() {
                             { label: 'Email', value: employee.email },
                             { label: 'Phone', value: employee.phone },
                             { label: 'Date Joined', value: employee.date_joined ? formatDate(employee.date_joined) : null },
-                            { label: 'Working Days', value: (employee.working_days != null && employee.working_days !== '') ? `${employee.working_days} days/month` : null },
                             { label: 'Monthly Leaves', value: (employee.monthly_leaves != null && Number(employee.monthly_leaves) > 0) ? `${employee.monthly_leaves} days` : null },
                             { label: 'Yearly Leaves', value: (employee.yearly_leaves != null && Number(employee.yearly_leaves) > 0) ? `${employee.yearly_leaves} days` : null },
                         ].filter(f => f.value).map((f, i) => (

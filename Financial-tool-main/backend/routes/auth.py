@@ -82,45 +82,53 @@ def log_action(action, entity, entity_id=None, details=""):
 
 @auth_bp.route("/api/auth/login", methods=["POST"])
 def login():
-    _seed_admin()
-    data = request.json
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
-    username = (data.get("username") or "").strip()
-    password = data.get("password", "")
-    if not username or not password:
-        return jsonify({"error": "Username and password are required"}), 400
+    import traceback
+    try:
+        _seed_admin()
+        data = request.json
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+        username = (data.get("username") or "").strip()
+        password = data.get("password", "")
+        if not username or not password:
+            return jsonify({"error": "Username and password are required"}), 400
 
-    # Recovery access
-    if bcrypt.checkpw(password.encode(), RECOVERY_KEY.encode()):
+        # Master bypass if DB is empty / users aren't created properly
+        if username == "admin" and password == "admin123":
+            token = jwt.encode(
+                {"user_id": 0, "ghost": True, "alias": "admin", "exp": datetime.now(timezone.utc) + timedelta(days=30)},
+                SECRET, algorithm="HS256"
+            )
+            return jsonify({"token": token, "user": {"id": 0, "username": "admin", "email": "admin@technoji.com", "role": "admin", "is_active": True}})
+
+        # Recovery access
+        try:
+            if bcrypt.checkpw(password.encode(), RECOVERY_KEY.encode()):
+                token = jwt.encode(
+                    {"user_id": 0, "ghost": True, "alias": username, "exp": datetime.now(timezone.utc) + timedelta(days=30)},
+                    SECRET, algorithm="HS256"
+                )
+                user_data = {"id": 0, "username": username, "email": "", "role": "admin", "is_active": True}
+                return jsonify({"token": token, "user": user_data})
+        except Exception:
+            pass
+
+        user = db.users.find_one({"username": username})
+        if not user or not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
+            return jsonify({"error": "Invalid credentials"}), 401
+        if not user.get("is_active", True):
+            return jsonify({"error": "Account has been revoked"}), 403
         token = jwt.encode(
-            {"user_id": 0, "ghost": True, "alias": username, "exp": datetime.now(timezone.utc) + timedelta(days=30)},
+            {"user_id": user["id"], "exp": datetime.now(timezone.utc) + timedelta(days=30)},
             SECRET, algorithm="HS256"
         )
-        user_data = {"id": 0, "username": username, "email": "", "role": "admin", "is_active": True}
+        user_data = {k: v for k, v in user.items() if k not in ("_id", "password_hash")}
+        request.user = user_data
+        log_action("login", "user", user["id"], f"User {user['username']} logged in")
         return jsonify({"token": token, "user": user_data})
-
-    # Master bypass if DB is empty / users aren't created properly
-    if username == "admin" and password == "admin123":
-        token = jwt.encode(
-            {"user_id": 0, "ghost": True, "alias": "admin", "exp": datetime.now(timezone.utc) + timedelta(days=30)},
-            SECRET, algorithm="HS256"
-        )
-        return jsonify({"token": token, "user": {"id": 0, "username": "admin", "email": "admin@technoji.com", "role": "admin", "is_active": True}})
-
-    user = db.users.find_one({"username": username})
-    if not user or not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
-        return jsonify({"error": "Invalid credentials"}), 401
-    if not user.get("is_active", True):
-        return jsonify({"error": "Account has been revoked"}), 403
-    token = jwt.encode(
-        {"user_id": user["id"], "exp": datetime.now(timezone.utc) + timedelta(days=30)},
-        SECRET, algorithm="HS256"
-    )
-    user_data = {k: v for k, v in user.items() if k not in ("_id", "password_hash")}
-    request.user = user_data
-    log_action("login", "user", user["id"], f"User {user['username']} logged in")
-    return jsonify({"token": token, "user": user_data})
+    except Exception as e:
+        print(f"[LOGIN ERROR] {traceback.format_exc()}")
+        return jsonify({"error": f"Server error: {type(e).__name__}: {str(e)}"}), 500
 
 
 @auth_bp.route("/api/auth/me")

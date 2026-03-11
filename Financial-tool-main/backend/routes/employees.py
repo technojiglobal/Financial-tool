@@ -66,7 +66,6 @@ def create_employee():
         "date_joined": (data.get("date_joined") or "").strip(),
         "monthly_leaves": max(0, int(float(data.get("monthly_leaves", 0) or 0))),
         "yearly_leaves": max(0, int(float(data.get("yearly_leaves", 0) or 0))),
-        "working_days": max(1, min(31, int(float(data.get("working_days", 22) or 22)))),
         "salary_breakdown": (data.get("salary_breakdown") or "").strip(),
     }
     db.employees.insert_one(doc)
@@ -116,7 +115,6 @@ def update_employee(eid):
         "date_joined": (data.get("date_joined") or "").strip(),
         "monthly_leaves": max(0, int(float(data.get("monthly_leaves", 0) or 0))),
         "yearly_leaves": max(0, int(float(data.get("yearly_leaves", 0) or 0))),
-        "working_days": max(1, min(31, int(float(data.get("working_days", 22) or 22)))),
         "salary_breakdown": (data.get("salary_breakdown") or "").strip(),
     }
     db.employees.update_one({"id": eid}, {"$set": update})
@@ -152,11 +150,28 @@ def add_salary_payment(eid):
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid amount"}), 400
 
-    if amount <= 0:
-        return jsonify({"error": "Amount must be greater than zero"}), 400
+    if amount < 0:
+        return jsonify({"error": "Amount cannot be negative"}), 400
+
+    status = data.get("status", "paid")
+    if amount <= 0 and status != "pending":
+        return jsonify({"error": "Amount must be greater than zero for paid status"}), 400
 
     if not data.get("date") and not data.get("payment_date"):
         return jsonify({"error": "Payment date is required"}), 400
+
+    # Parse attendance fields
+    try:
+        total_working_days = max(1, min(31, int(float(data.get("total_working_days", 22) or 22))))
+    except (ValueError, TypeError):
+        total_working_days = 22
+    try:
+        days_attended = max(0, min(total_working_days, int(float(data.get("days_attended", total_working_days) or total_working_days))))
+    except (ValueError, TypeError):
+        days_attended = total_working_days
+
+    # Calculate processed salary based on attendance
+    processed_salary = round((emp.get("salary_per_month", 0) / total_working_days) * days_attended, 2)
 
     sid = next_id("salary_payments")
     payment_date = data.get("payment_date", data.get("date", ""))
@@ -167,6 +182,9 @@ def add_salary_payment(eid):
         "payment_date": payment_date,
         "date": payment_date,  # Used by profit/dashboard queries
         "amount_paid": amount,
+        "total_working_days": total_working_days,
+        "days_attended": days_attended,
+        "processed_salary": processed_salary,
         "month": data.get("salary_month", data.get("month", "")),
         "status": data.get("status", "paid"),
         "note": (data.get("note") or "").strip(),

@@ -6,7 +6,15 @@ export default function SalaryForm() {
     const { empId } = useParams();
     const navigate = useNavigate();
     const [employee, setEmployee] = useState(null);
-    const [form, setForm] = useState({ payment_date: new Date().toISOString().split('T')[0], amount_paid: '', salary_month: new Date().toISOString().slice(0, 7), status: 'paid', note: '' });
+    const [form, setForm] = useState({
+        payment_date: new Date().toISOString().split('T')[0],
+        amount_paid: '',
+        salary_month: new Date().toISOString().slice(0, 7),
+        total_working_days: '22',
+        days_attended: '22',
+        status: 'paid',
+        note: ''
+    });
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -30,16 +38,42 @@ export default function SalaryForm() {
         );
     }
 
-    const fmt = (n) => '₹' + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+    const fmt = (n) => '₹' + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+
+    // Compute processed salary based on attendance
+    const baseSalary = Number(employee?.salary_per_month || 0);
+    const totalDays = Math.max(1, Number(form.total_working_days) || 1);
+    const daysAttended = Math.min(totalDays, Math.max(0, Number(form.days_attended) || 0));
+    const perDaySalary = baseSalary / totalDays;
+    const processedSalary = Math.round(perDaySalary * daysAttended * 100) / 100;
+    const absentDays = totalDays - daysAttended;
+    const deduction = Math.round((baseSalary - processedSalary) * 100) / 100;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
-            await api.addSalaryPayment(empId, { ...form, month: form.salary_month, date: form.payment_date });
+            await api.addSalaryPayment(empId, {
+                ...form,
+                month: form.salary_month,
+                date: form.payment_date,
+                total_working_days: form.total_working_days,
+                days_attended: form.days_attended,
+                processed_salary: processedSalary
+            });
             navigate('/salaries');
         } catch (err) { alert(err.message); }
         finally { setLoading(false); }
+    };
+
+    // Auto-fill amount when days change (only if amount hasn't been manually edited or is empty)
+    const handleDaysChange = (key, val) => {
+        const newForm = { ...form, [key]: val };
+        const newTotalDays = Math.max(1, Number(key === 'total_working_days' ? val : newForm.total_working_days) || 1);
+        const newDaysAttended = Math.min(newTotalDays, Math.max(0, Number(key === 'days_attended' ? val : newForm.days_attended) || 0));
+        const newProcessed = Math.round((baseSalary / newTotalDays) * newDaysAttended * 100) / 100;
+        newForm.amount_paid = String(newProcessed);
+        setForm(newForm);
     };
 
     return (
@@ -60,7 +94,7 @@ export default function SalaryForm() {
                     <div>
                         <strong>{employee.name}</strong> ({employee.employee_code})<br />
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                            Monthly salary: <strong>{fmt(employee.salary_per_month)}</strong> &nbsp;|&nbsp; Total paid: <span style={{ color: 'var(--success)' }}>{fmt(employee.total_paid)}</span>
+                            Base monthly salary: <strong>{fmt(employee.salary_per_month)}</strong> &nbsp;|&nbsp; Total paid: <span style={{ color: 'var(--success)' }}>{fmt(employee.total_paid)}</span>
                         </span>
                     </div>
                 </div>
@@ -80,14 +114,89 @@ export default function SalaryForm() {
                                 <input type="date" className="form-control" value={form.payment_date} onChange={e => setForm({ ...form, payment_date: e.target.value })} required />
                             </div>
                         </div>
+
+                        {/* Attendance Section */}
+                        <div className="form-section-title" style={{ marginTop: 24 }}>
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B', display: 'inline-block', marginRight: 8 }}></span>
+                            Attendance Details
+                        </div>
                         <div className="form-row">
                             <div className="form-group">
-                                <label>Amount Paid *</label>
-                                <input type="number" min="1" step="any" className="form-control" value={form.amount_paid} onChange={e => setForm({ ...form, amount_paid: e.target.value })} required placeholder="e.g. 25000" />
+                                <label>Total Working Days *</label>
+                                <input type="number" min="1" max="31" className="form-control" value={form.total_working_days}
+                                    onChange={e => handleDaysChange('total_working_days', e.target.value)} required placeholder="e.g. 22" />
+                            </div>
+                            <div className="form-group">
+                                <label>Days Employee Attended *</label>
+                                <input type="number" min="0" max={form.total_working_days || 31} className="form-control" value={form.days_attended}
+                                    onChange={e => handleDaysChange('days_attended', e.target.value)} required placeholder="e.g. 20" />
+                            </div>
+                        </div>
+
+                        {/* Salary Calculation Summary */}
+                        {employee && (
+                            <div style={{
+                                background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                                border: '1px solid #bae6fd', borderRadius: 12,
+                                padding: '16px 20px', marginBottom: 20, marginTop: 4
+                            }}>
+                                <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#0369a1', marginBottom: 10 }}>
+                                    💰 Salary Calculation
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px 20px', fontSize: '0.84rem' }}>
+                                    <div style={{ color: 'var(--text-secondary)' }}>
+                                        Per Day Salary: <strong style={{ color: '#0369a1' }}>{fmt(perDaySalary)}</strong>
+                                    </div>
+                                    <div style={{ color: 'var(--text-secondary)' }}>
+                                        Days Attended: <strong>{daysAttended}</strong> / {totalDays}
+                                    </div>
+                                    <div style={{ color: 'var(--text-secondary)' }}>
+                                        Processed Salary: <strong style={{ color: '#059669', fontSize: '1rem' }}>{fmt(processedSalary)}</strong>
+                                    </div>
+                                    {absentDays > 0 && (
+                                        <div style={{ color: '#dc2626' }}>
+                                            Absence Deduction ({absentDays} day{absentDays > 1 ? 's' : ''}): <strong>-{fmt(deduction)}</strong>
+                                        </div>
+                                    )}
+                                </div>
+                                {absentDays > 0 && (
+                                    <div style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: 8, fontStyle: 'italic' }}>
+                                        ℹ️ Absence deduction is not added to pending amount. Only unpaid processed salary is tracked as pending.
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label>Amount Paid {form.status !== 'pending' ? '*' : ''}</label>
+                                <div style={{ position: 'relative' }}>
+                                    <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.9rem' }}>₹</span>
+                                    <input type="number" min="0" step="any" className="form-control" style={{ paddingLeft: 32, opacity: form.status === 'pending' ? 0.5 : 1 }}
+                                        value={form.amount_paid} onChange={e => setForm({ ...form, amount_paid: e.target.value })}
+                                        required={form.status !== 'pending'} disabled={form.status === 'pending'} placeholder="e.g. 25000" />
+                                </div>
+                                {form.status === 'pending' && (
+                                    <span style={{ fontSize: '0.72rem', color: '#f59e0b', marginTop: 4, display: 'block' }}>
+                                        ℹ️ Amount is ₹0 because status is set to Pending.
+                                    </span>
+                                )}
+                                {form.status !== 'pending' && processedSalary > 0 && Number(form.amount_paid) < processedSalary && Number(form.amount_paid) > 0 && (
+                                    <span style={{ fontSize: '0.72rem', color: '#dc2626', marginTop: 4, display: 'block' }}>
+                                        ⚠️ Paying {fmt(form.amount_paid)} is less than processed salary {fmt(processedSalary)}. The difference ({fmt(processedSalary - Number(form.amount_paid))}) will be added to pending.
+                                    </span>
+                                )}
                             </div>
                             <div className="form-group">
                                 <label>Status</label>
-                                <select className="form-control" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+                                <select className="form-control" value={form.status} onChange={e => {
+                                    const newStatus = e.target.value;
+                                    setForm(f => ({
+                                        ...f,
+                                        status: newStatus,
+                                        amount_paid: newStatus === 'pending' ? '0' : String(processedSalary)
+                                    }));
+                                }}>
                                     <option value="paid">Paid</option>
                                     <option value="pending">Pending</option>
                                 </select>
