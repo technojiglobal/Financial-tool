@@ -58,6 +58,15 @@ export default function Salaries() {
     const avatarColors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6'];
     const getColor = (id) => avatarColors[(id || 0) % avatarColors.length];
 
+    // Helper: calculate pending for a single payment record
+    const calcPaymentPending = (sp) => {
+        // Use ?? so that 0 is treated as a valid processed_salary (|| treats 0 as falsy)
+        const processed = Number(sp.processed_salary ?? sp.amount_paid ?? 0);
+        const paidAmt = Number(sp.amount_paid ?? 0);
+        if (sp.status === 'pending') return processed; // entire processed salary is pending
+        return Math.max(0, processed - paidAmt); // shortfall is pending
+    };
+
     // Per-employee calculations for the selected month
     const getEmpMonthData = (emp) => {
         const monthly = Number(emp.salary_per_month || 0);
@@ -65,15 +74,14 @@ export default function Salaries() {
             const m = sp.month || sp.salary_month || '';
             return m.startsWith(curMonth);
         });
-        const paid = payments.reduce((s, sp) => s + (sp.status === 'pending' ? 0 : Number(sp.amount_paid || 0)), 0);
-        // Pending: if status="pending", full processed_salary is pending
-        const pending = payments.reduce((s, sp) => {
-            const processed = Number(sp.processed_salary || sp.amount_paid || 0);
-            const paidAmt = Number(sp.amount_paid || 0);
-            if (sp.status === 'pending') return s + processed;
-            return s + Math.max(0, processed - paidAmt);
+        // Paid: sum of amount_paid for non-pending payments only
+        const paid = payments.reduce((s, sp) => {
+            if (sp.status === 'pending') return s;
+            return s + Number(sp.amount_paid ?? 0);
         }, 0);
-        // Attendance: sum up days_attended / total_working_days from payments this month
+        // Pending: for pending status → full processed_salary; for paid status → shortfall
+        const pending = payments.reduce((s, sp) => s + calcPaymentPending(sp), 0);
+        // Attendance: from payments this month
         const totalWorkingDays = payments.length > 0 ? Number(payments[0].total_working_days || 0) : 0;
         const daysAttended = payments.reduce((s, sp) => s + Number(sp.days_attended || 0), 0);
         return { monthly, paid, pending, payments, totalWorkingDays, daysAttended };
@@ -230,13 +238,11 @@ export default function Salaries() {
             {viewEmp && (() => {
                 const { monthly, paid, pending, payments } = getEmpMonthData(viewEmp);
                 const allPayments = (viewEmp.salary_payments || []).sort((a, b) => (b.date || b.payment_date || '').localeCompare(a.date || a.payment_date || ''));
-                const totalAllPaid = allPayments.reduce((s, sp) => s + (sp.status === 'pending' ? 0 : Number(sp.amount_paid || 0)), 0);
-                const totalAllPending = allPayments.reduce((s, sp) => {
-                    const processed = Number(sp.processed_salary || sp.amount_paid || 0);
-                    const paidAmt = Number(sp.amount_paid || 0);
-                    if (sp.status === 'pending') return s + processed;
-                    return s + Math.max(0, processed - paidAmt);
+                const totalAllPaid = allPayments.reduce((s, sp) => {
+                    if (sp.status === 'pending') return s;
+                    return s + Number(sp.amount_paid ?? 0);
                 }, 0);
+                const totalAllPending = allPayments.reduce((s, sp) => s + calcPaymentPending(sp), 0);
 
                 const formatMonth = (m) => {
                     if (!m) return '—';

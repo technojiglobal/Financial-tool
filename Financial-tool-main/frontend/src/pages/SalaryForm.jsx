@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 
@@ -16,6 +16,7 @@ export default function SalaryForm() {
         note: ''
     });
     const [loading, setLoading] = useState(false);
+    const manualAmount = useRef(false); // track if user manually edited amount
 
     useEffect(() => {
         api.getEmployees().then(employees => {
@@ -66,15 +67,30 @@ export default function SalaryForm() {
         finally { setLoading(false); }
     };
 
-    // Auto-fill amount when days change (only if amount hasn't been manually edited or is empty)
+    // Auto-fill amount when days change (only if user hasn't manually edited the amount)
     const handleDaysChange = (key, val) => {
         const newForm = { ...form, [key]: val };
         const newTotalDays = Math.max(1, Number(key === 'total_working_days' ? val : newForm.total_working_days) || 1);
         const newDaysAttended = Math.min(newTotalDays, Math.max(0, Number(key === 'days_attended' ? val : newForm.days_attended) || 0));
         const newProcessed = Math.round((baseSalary / newTotalDays) * newDaysAttended * 100) / 100;
-        newForm.amount_paid = String(newProcessed);
+        // Only auto-fill amount if user hasn't manually edited it, and status is not pending
+        if (!manualAmount.current && newForm.status !== 'pending') {
+            newForm.amount_paid = String(newProcessed);
+        }
         setForm(newForm);
     };
+
+    // Handle manual amount change
+    const handleAmountChange = (val) => {
+        manualAmount.current = true; // user is now manually controlling the amount
+        setForm({ ...form, amount_paid: val });
+    };
+
+    // Compute pending for this payment
+    const amountPaid = Number(form.amount_paid || 0);
+    const paymentPending = form.status === 'pending'
+        ? processedSalary
+        : Math.max(0, processedSalary - amountPaid);
 
     return (
         <div className="form-page">
@@ -173,17 +189,17 @@ export default function SalaryForm() {
                                 <div style={{ position: 'relative' }}>
                                     <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.9rem' }}>₹</span>
                                     <input type="number" min="0" step="any" className="form-control" style={{ paddingLeft: 32, opacity: form.status === 'pending' ? 0.5 : 1 }}
-                                        value={form.amount_paid} onChange={e => setForm({ ...form, amount_paid: e.target.value })}
+                                        value={form.amount_paid} onChange={e => handleAmountChange(e.target.value)}
                                         required={form.status !== 'pending'} disabled={form.status === 'pending'} placeholder="e.g. 25000" />
                                 </div>
                                 {form.status === 'pending' && (
                                     <span style={{ fontSize: '0.72rem', color: '#f59e0b', marginTop: 4, display: 'block' }}>
-                                        ℹ️ Amount is ₹0 because status is set to Pending.
+                                        ℹ️ Amount is ₹0 because status is set to Pending. Processed salary ({fmt(processedSalary)}) will be added to pending.
                                     </span>
                                 )}
-                                {form.status !== 'pending' && processedSalary > 0 && Number(form.amount_paid) < processedSalary && Number(form.amount_paid) > 0 && (
+                                {form.status !== 'pending' && processedSalary > 0 && amountPaid < processedSalary && amountPaid > 0 && (
                                     <span style={{ fontSize: '0.72rem', color: '#dc2626', marginTop: 4, display: 'block' }}>
-                                        ⚠️ Paying {fmt(form.amount_paid)} is less than processed salary {fmt(processedSalary)}. The difference ({fmt(processedSalary - Number(form.amount_paid))}) will be added to pending.
+                                        ⚠️ Paying {fmt(amountPaid)} is less than processed salary {fmt(processedSalary)}. The difference (<strong>{fmt(paymentPending)}</strong>) will be added to pending.
                                     </span>
                                 )}
                             </div>
@@ -191,6 +207,7 @@ export default function SalaryForm() {
                                 <label>Status</label>
                                 <select className="form-control" value={form.status} onChange={e => {
                                     const newStatus = e.target.value;
+                                    manualAmount.current = false; // reset manual flag on status change
                                     setForm(f => ({
                                         ...f,
                                         status: newStatus,
