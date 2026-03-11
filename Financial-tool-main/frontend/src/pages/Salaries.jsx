@@ -73,7 +73,10 @@ export default function Salaries() {
             if (sp.status === 'pending') return s + processed;
             return s + Math.max(0, processed - paidAmt);
         }, 0);
-        return { monthly, paid, pending, payments };
+        // Attendance: sum up days_attended / total_working_days from payments this month
+        const totalWorkingDays = payments.length > 0 ? Number(payments[0].total_working_days || 0) : 0;
+        const daysAttended = payments.reduce((s, sp) => s + Number(sp.days_attended || 0), 0);
+        return { monthly, paid, pending, payments, totalWorkingDays, daysAttended };
     };
 
     // Filter + search
@@ -158,6 +161,7 @@ export default function Salaries() {
                                 <th>Employee Name</th>
                                 <th>Role</th>
                                 <th>Actual Salary</th>
+                                <th>Days Worked</th>
                                 <th>Paid Salary</th>
                                 <th>Pending Salary</th>
                                 <th>Action</th>
@@ -165,7 +169,7 @@ export default function Salaries() {
                         </thead>
                         <tbody>
                             {filteredEmployees.length === 0 ? (
-                                <tr><td colSpan={6}>
+                                <tr><td colSpan={7}>
                                     <div className="empty-state">
                                         <div className="empty-icon">👥</div>
                                         <h3>No employees found</h3>
@@ -173,7 +177,7 @@ export default function Salaries() {
                                     </div>
                                 </td></tr>
                             ) : filteredEmployees.map(emp => {
-                                const { monthly, paid, pending } = getEmpMonthData(emp);
+                                const { monthly, paid, pending, totalWorkingDays, daysAttended } = getEmpMonthData(emp);
                                 return (
                                     <tr key={emp.id}>
                                         <td>
@@ -191,6 +195,15 @@ export default function Salaries() {
                                         </td>
                                         <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{emp.role || emp.department || '—'}</td>
                                         <td style={{ fontWeight: 600 }}>{fmt(monthly)}</td>
+                                        <td style={{ fontWeight: 600, fontSize: '0.85rem', textAlign: 'center' }}>
+                                            {totalWorkingDays > 0 ? (
+                                                <span style={{ color: daysAttended < totalWorkingDays ? '#f59e0b' : '#10B981' }}>
+                                                    {daysAttended}/{totalWorkingDays}
+                                                </span>
+                                            ) : (
+                                                <span style={{ color: 'var(--text-muted)' }}>—</span>
+                                            )}
+                                        </td>
                                         <td style={{ fontWeight: 600, color: '#10B981' }}>{fmt(paid)}</td>
                                         <td style={{ fontWeight: 600, color: pending > 0 ? '#EF4444' : '#10B981' }}>{fmt(pending)}</td>
                                         <td>

@@ -12,7 +12,7 @@ def list_employees():
     for emp in employees:
         sps = list(db.salary_payments.find({"employee_id": emp["id"]}, {"_id": 0}).sort("date", -1))
         emp["salary_payments"] = sps
-        emp["total_paid"] = sum(sp.get("amount_paid", 0) for sp in sps)
+        emp["total_paid"] = sum(sp.get("amount_paid", 0) for sp in sps if sp.get("status", "paid") != "pending")
     return jsonify(employees)
 
 
@@ -24,7 +24,7 @@ def get_employee(eid):
         return jsonify({"error": "Employee not found"}), 404
     sps = list(db.salary_payments.find({"employee_id": eid}, {"_id": 0}).sort("date", -1))
     emp["salary_payments"] = sps
-    emp["total_paid"] = sum(sp.get("amount_paid", 0) for sp in sps)
+    emp["total_paid"] = sum(sp.get("amount_paid", 0) for sp in sps if sp.get("status", "paid") != "pending")
     return jsonify(emp)
 
 
