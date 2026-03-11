@@ -15,8 +15,8 @@ if not app.config["SECRET_KEY"]:
 
 # Restrict CORS to known origins
 ALLOWED_ORIGINS = [
-    "https://expenses-phi-eight.vercel.app",
-    "https://expenses-y23t.onrender.com",
+    "https://financial-tool-five.vercel.app",
+    "https://financial-tool-7dhn.onrender.com",
     "http://localhost:5173",
 ]
 CORS(app, origins=ALLOWED_ORIGINS)

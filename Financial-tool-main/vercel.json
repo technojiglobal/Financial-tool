@@ -4,7 +4,7 @@
   "outputDirectory": "frontend/dist",
   "framework": null,
   "env": {
-    "VITE_API_URL": "https://expenses-y23t.onrender.com"
+    "VITE_API_URL": "https://financial-tool-7dhn.onrender.com"
   },
   "rewrites": [
     {

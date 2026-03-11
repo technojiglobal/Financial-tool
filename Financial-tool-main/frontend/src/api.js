@@ -1,4 +1,4 @@
-const API = (import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'https://expenses-y23t.onrender.com')) + '/api';
+const API = (import.meta.env.DEV ? '' : (import.meta.env.VITE_API_URL || 'https://financial-tool-7dhn.onrender.com')) + '/api';
 
 function getHeaders() {
     const token = localStorage.getItem('token');
