@@ -67,13 +67,19 @@ export default function Salaries() {
         });
         const paid = payments.reduce((s, sp) => s + (sp.status === 'pending' ? 0 : Number(sp.amount_paid || 0)), 0);
         // Pending: if status="pending", full processed_salary is pending
+        // If status="paid" but amount_paid < processed_salary, difference is pending
         const pending = payments.reduce((s, sp) => {
-            const processed = Number(sp.processed_salary || sp.amount_paid || 0);
+            const processed = Number(sp.processed_salary || 0);
             const paidAmt = Number(sp.amount_paid || 0);
-            if (sp.status === 'pending') return s + processed;
-            return s + Math.max(0, processed - paidAmt);
+            if (sp.status === 'pending') return s + (processed > 0 ? processed : monthly);
+            if (processed > 0) return s + Math.max(0, processed - paidAmt);
+            return s;
         }, 0);
-        return { monthly, paid, pending, payments };
+        // Get attendance info from the latest payment for this month
+        const latestPayment = payments.length > 0 ? payments[payments.length - 1] : null;
+        const daysWorked = latestPayment ? Number(latestPayment.days_attended || 0) : null;
+        const totalWorkingDays = latestPayment ? Number(latestPayment.total_working_days || 0) : null;
+        return { monthly, paid, pending, payments, daysWorked, totalWorkingDays };
     };
 
     // Filter + search
@@ -157,6 +163,7 @@ export default function Salaries() {
                             <tr>
                                 <th>Employee Name</th>
                                 <th>Role</th>
+                                <th>Days Worked</th>
                                 <th>Actual Salary</th>
                                 <th>Paid Salary</th>
                                 <th>Pending Salary</th>
@@ -165,7 +172,7 @@ export default function Salaries() {
                         </thead>
                         <tbody>
                             {filteredEmployees.length === 0 ? (
-                                <tr><td colSpan={6}>
+                                <tr><td colSpan={7}>
                                     <div className="empty-state">
                                         <div className="empty-icon">👥</div>
                                         <h3>No employees found</h3>
@@ -173,7 +180,7 @@ export default function Salaries() {
                                     </div>
                                 </td></tr>
                             ) : filteredEmployees.map(emp => {
-                                const { monthly, paid, pending } = getEmpMonthData(emp);
+                                const { monthly, paid, pending, daysWorked, totalWorkingDays } = getEmpMonthData(emp);
                                 return (
                                     <tr key={emp.id}>
                                         <td>
@@ -190,6 +197,9 @@ export default function Salaries() {
                                             </div>
                                         </td>
                                         <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{emp.role || emp.department || '—'}</td>
+                                        <td style={{ fontSize: '0.85rem', fontWeight: 600, color: daysWorked !== null ? (daysWorked < totalWorkingDays ? '#F59E0B' : '#10B981') : 'var(--text-muted)' }}>
+                                            {daysWorked !== null ? `${daysWorked} / ${totalWorkingDays}` : '—'}
+                                        </td>
                                         <td style={{ fontWeight: 600 }}>{fmt(monthly)}</td>
                                         <td style={{ fontWeight: 600, color: '#10B981' }}>{fmt(paid)}</td>
                                         <td style={{ fontWeight: 600, color: pending > 0 ? '#EF4444' : '#10B981' }}>{fmt(pending)}</td>
@@ -219,10 +229,11 @@ export default function Salaries() {
                 const allPayments = (viewEmp.salary_payments || []).sort((a, b) => (b.date || b.payment_date || '').localeCompare(a.date || a.payment_date || ''));
                 const totalAllPaid = allPayments.reduce((s, sp) => s + (sp.status === 'pending' ? 0 : Number(sp.amount_paid || 0)), 0);
                 const totalAllPending = allPayments.reduce((s, sp) => {
-                    const processed = Number(sp.processed_salary || sp.amount_paid || 0);
+                    const processed = Number(sp.processed_salary || 0);
                     const paidAmt = Number(sp.amount_paid || 0);
-                    if (sp.status === 'pending') return s + processed;
-                    return s + Math.max(0, processed - paidAmt);
+                    if (sp.status === 'pending') return s + (processed > 0 ? processed : Number(viewEmp.salary_per_month || 0));
+                    if (processed > 0) return s + Math.max(0, processed - paidAmt);
+                    return s;
                 }, 0);
 
                 const formatMonth = (m) => {
