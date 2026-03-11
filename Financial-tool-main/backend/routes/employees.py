@@ -210,12 +210,8 @@ def update_salary_payment(sid):
     except (ValueError, TypeError):
         return jsonify({"error": "Invalid amount"}), 400
 
-    if amount < 0:
-        return jsonify({"error": "Amount cannot be negative"}), 400
-
-    status = data.get("status", sp.get("status", "paid"))
-    if amount <= 0 and status != "pending":
-        return jsonify({"error": "Amount must be greater than zero for paid status"}), 400
+    if amount <= 0:
+        return jsonify({"error": "Amount must be greater than zero"}), 400
 
     update = {}
     if "amount_paid" in data:
@@ -231,24 +227,7 @@ def update_salary_payment(sid):
     if "note" in data:
         update["note"] = (data.get("note") or "").strip()
     if "status" in data:
-        update["status"] = status
-
-    # Update attendance fields if provided
-    if "total_working_days" in data or "days_attended" in data:
-        eid = sp.get("employee_id")
-        emp = db.employees.find_one({"id": eid})
-        base_salary = emp.get("salary_per_month", 0) if emp else 0
-        try:
-            twd = max(1, min(31, int(float(data.get("total_working_days", sp.get("total_working_days", 22)) or 22))))
-        except (ValueError, TypeError):
-            twd = sp.get("total_working_days", 22)
-        try:
-            da = max(0, min(twd, int(float(data.get("days_attended", sp.get("days_attended", twd)) or twd))))
-        except (ValueError, TypeError):
-            da = sp.get("days_attended", twd)
-        update["total_working_days"] = twd
-        update["days_attended"] = da
-        update["processed_salary"] = round((base_salary / twd) * da, 2)
+        update["status"] = data.get("status", "paid")
 
     if update:
         db.salary_payments.update_one({"id": sid}, {"$set": update})
