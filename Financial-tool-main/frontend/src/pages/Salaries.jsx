@@ -69,9 +69,11 @@ export default function Salaries() {
         // Pending: if status="pending", full processed_salary is pending
         // If status="paid" but amount_paid < processed_salary, difference is pending
         const pending = payments.reduce((s, sp) => {
-            const processed = Number(sp.processed_salary || 0);
+            const processed = (sp.processed_salary !== undefined && sp.processed_salary !== null) 
+                ? Number(sp.processed_salary) 
+                : monthly;
             const paidAmt = Number(sp.amount_paid || 0);
-            if (sp.status === 'pending') return s + (processed > 0 ? processed : monthly);
+            if (sp.status === 'pending') return s + processed;
             if (processed > 0) return s + Math.max(0, processed - paidAmt);
             return s;
         }, 0);
@@ -229,9 +231,11 @@ export default function Salaries() {
                 const allPayments = (viewEmp.salary_payments || []).sort((a, b) => (b.date || b.payment_date || '').localeCompare(a.date || a.payment_date || ''));
                 const totalAllPaid = allPayments.reduce((s, sp) => s + (sp.status === 'pending' ? 0 : Number(sp.amount_paid || 0)), 0);
                 const totalAllPending = allPayments.reduce((s, sp) => {
-                    const processed = Number(sp.processed_salary || 0);
+                    const processed = (sp.processed_salary !== undefined && sp.processed_salary !== null) 
+                        ? Number(sp.processed_salary) 
+                        : Number(viewEmp.salary_per_month || 0);
                     const paidAmt = Number(sp.amount_paid || 0);
-                    if (sp.status === 'pending') return s + (processed > 0 ? processed : Number(viewEmp.salary_per_month || 0));
+                    if (sp.status === 'pending') return s + processed;
                     if (processed > 0) return s + Math.max(0, processed - paidAmt);
                     return s;
                 }, 0);

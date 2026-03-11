@@ -120,9 +120,11 @@ export default function EmployeeDetail() {
     // Compute pending: if status="pending", full processed_salary is pending
     // If status="paid" but amount_paid < processed_salary, difference is pending
     const totalPending = allPayments.reduce((sum, sp) => {
-        const processed = Number(sp.processed_salary || 0);
+        const processed = (sp.processed_salary !== undefined && sp.processed_salary !== null) 
+            ? Number(sp.processed_salary) 
+            : monthly;
         const paid = Number(sp.amount_paid || 0);
-        if (sp.status === 'pending') return sum + (processed > 0 ? processed : monthly);
+        if (sp.status === 'pending') return sum + processed;
         if (processed > 0) return sum + Math.max(0, processed - paid);
         return sum;
     }, 0);
@@ -131,9 +133,11 @@ export default function EmployeeDetail() {
     const chronological = [...allPayments].reverse();
     let runningPending = 0;
     const paymentsWithBalance = chronological.map(sp => {
-        const processed = Number(sp.processed_salary || 0);
+        const processed = (sp.processed_salary !== undefined && sp.processed_salary !== null) 
+            ? Number(sp.processed_salary) 
+            : monthly;
         const paid = Number(sp.amount_paid || 0);
-        const paymentPending = sp.status === 'pending' ? (processed > 0 ? processed : monthly) : (processed > 0 ? Math.max(0, processed - paid) : 0);
+        const paymentPending = sp.status === 'pending' ? processed : (processed > 0 ? Math.max(0, processed - paid) : 0);
         runningPending += paymentPending;
         return { ...sp, pendingBalance: runningPending, paymentPending };
     }).reverse();
