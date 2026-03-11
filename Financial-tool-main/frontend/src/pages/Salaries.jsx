@@ -79,8 +79,8 @@ export default function Salaries() {
         }, 0);
         // Get attendance info from the latest payment for this month
         const latestPayment = payments.length > 0 ? payments[payments.length - 1] : null;
-        const daysWorked = latestPayment ? Number(latestPayment.days_attended || 0) : null;
-        const totalWorkingDays = latestPayment ? Number(latestPayment.total_working_days || 0) : null;
+        const totalWorkingDays = latestPayment && latestPayment.total_working_days ? Number(latestPayment.total_working_days) : null;
+        const daysWorked = latestPayment && latestPayment.days_attended !== undefined && totalWorkingDays ? Number(latestPayment.days_attended) : null;
         return { monthly, paid, pending, payments, daysWorked, totalWorkingDays };
     };
 
