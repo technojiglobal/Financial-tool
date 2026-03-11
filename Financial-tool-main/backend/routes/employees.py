@@ -187,6 +187,8 @@ def add_salary_payment(eid):
         "processed_salary": processed_salary,
         "month": data.get("salary_month", data.get("month", "")),
         "status": data.get("status", "paid"),
+        "includes_pending_clearance": bool(data.get("includes_pending_clearance", False)),
+        "pending_cleared": float(data.get("pending_cleared", 0) or 0),
         "note": (data.get("note") or "").strip(),
     }
     db.salary_payments.insert_one(doc)

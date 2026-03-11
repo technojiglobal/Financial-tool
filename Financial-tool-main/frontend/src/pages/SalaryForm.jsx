@@ -50,6 +50,15 @@ export default function SalaryForm() {
     const absentDays = totalDays - daysAttended;
     const deduction = Math.round((baseSalary - processedSalary) * 100) / 100;
 
+    // Calculate existing pending from all past payments
+    const existingPending = (employee?.salary_payments || []).reduce((sum, sp) => {
+        const processed = Number(sp.processed_salary ?? sp.amount_paid ?? 0);
+        const paidAmt = Number(sp.amount_paid ?? 0);
+        if (sp.status === 'pending') return sum + processed;
+        return sum + Math.max(0, processed - paidAmt);
+    }, 0);
+    const [includePending, setIncludePending] = useState(false);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -60,7 +69,9 @@ export default function SalaryForm() {
                 date: form.payment_date,
                 total_working_days: form.total_working_days,
                 days_attended: form.days_attended,
-                processed_salary: processedSalary
+                processed_salary: processedSalary,
+                includes_pending_clearance: includePending,
+                pending_cleared: includePending ? existingPending : 0
             });
             navigate('/salaries');
         } catch (err) { alert(err.message); }
@@ -113,6 +124,44 @@ export default function SalaryForm() {
                             Base monthly salary: <strong>{fmt(employee.salary_per_month)}</strong> &nbsp;|&nbsp; Total paid: <span style={{ color: 'var(--success)' }}>{fmt(employee.total_paid)}</span>
                         </span>
                     </div>
+                </div>
+            )}
+
+            {/* Pending Amount Banner */}
+            {employee && existingPending > 0 && form.status !== 'pending' && (
+                <div style={{
+                    background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                    border: '1px solid #f59e0b', borderRadius: 12,
+                    padding: '14px 20px', marginBottom: 16,
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12
+                }}>
+                    <div>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#92400e', marginBottom: 4 }}>
+                            ⚠️ Pending Amount
+                        </div>
+                        <div style={{ fontSize: '0.92rem', color: '#78350f' }}>
+                            This employee has <strong style={{ color: '#dc2626', fontSize: '1rem' }}>{fmt(existingPending)}</strong> pending from previous payments.
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setIncludePending(!includePending);
+                            manualAmount.current = true;
+                            const newAmount = !includePending
+                                ? processedSalary + existingPending
+                                : processedSalary;
+                            setForm(f => ({ ...f, amount_paid: String(Math.round(newAmount * 100) / 100) }));
+                        }}
+                        style={{
+                            padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                            fontWeight: 700, fontSize: '0.8rem', whiteSpace: 'nowrap', transition: 'all 0.15s ease',
+                            background: includePending ? '#dc2626' : '#059669',
+                            color: '#fff'
+                        }}
+                    >
+                        {includePending ? '✕ Remove Pending' : '✓ Clear Pending'}
+                    </button>
                 </div>
             )}
 
