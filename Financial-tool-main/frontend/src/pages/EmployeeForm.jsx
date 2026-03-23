@@ -12,8 +12,7 @@ export default function EmployeeForm() {
     const [form, setForm] = useState({
         name: '', employee_code: '', email: '', phone: '',
         role: '', department: '', employee_type: 'Full-time', date_joined: '',
-        monthly_leaves: '', yearly_leaves: '',
-        salary_per_month: '', salary_breakdown: ''
+        monthly_leaves: '', yearly_leaves: ''
     });
     const [loading, setLoading] = useState(false);
 
@@ -27,9 +26,7 @@ export default function EmployeeForm() {
                     role: e.role || '', department: e.department || '',
                     employee_type: e.employee_type || 'Full-time',
                     date_joined: e.date_joined || '',
-                    monthly_leaves: e.monthly_leaves || '', yearly_leaves: e.yearly_leaves || '',
-                    salary_per_month: e.salary_per_month || '',
-                    salary_breakdown: e.salary_breakdown || ''
+                    monthly_leaves: e.monthly_leaves || '', yearly_leaves: e.yearly_leaves || ''
                 });
             });
         }
@@ -132,22 +129,6 @@ export default function EmployeeForm() {
                             </div>
                         </div>
 
-                        {/* Salary Details */}
-                        <div className="form-section-title" style={{ marginTop: 28 }}>{sectionDot('#EF4444')}Salary Details</div>
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Actual Monthly Salary *</label>
-                                <div style={{ position: 'relative' }}>
-                                    <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.9rem' }}>₹</span>
-                                    <input type="number" min="0" step="any" className="form-control" style={{ paddingLeft: 32 }} value={form.salary_per_month} onChange={e => set('salary_per_month', e.target.value)} required placeholder="e.g. 25000" />
-                                </div>
-                            </div>
-                        </div>
-                        <div className="form-group">
-                            <label>Salary Structure (Breakdown)</label>
-                            <textarea className="form-control" rows={4} value={form.salary_breakdown} onChange={e => set('salary_breakdown', e.target.value)} placeholder={"Basic: 15000\nHRA: 5000\nSpecial Allowance: 3000\nConveyance: 2000"} />
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>Enter each component on a new line for proper breakdown in payslips.</span>
-                        </div>
                     </div>
                     <div className="form-card-footer">
                         <Link to="/salaries" className="btn btn-outline">Cancel</Link>

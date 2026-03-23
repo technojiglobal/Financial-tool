@@ -40,12 +40,12 @@ def create_employee():
         return jsonify({"error": "Employee name is required"}), 400
 
     try:
-        salary = float(data.get("salary_per_month", 0))
+        salary = float(data.get("salary_per_month", 0) or 0)
     except (ValueError, TypeError):
-        return jsonify({"error": "Invalid salary amount"}), 400
+        salary = 0
 
     if salary < 0:
-        return jsonify({"error": "Salary cannot be negative"}), 400
+        salary = 0
 
     # Check for duplicate employee code
     emp_code = (data.get("employee_code") or "").strip()
@@ -89,12 +89,12 @@ def update_employee(eid):
         return jsonify({"error": "Employee name is required"}), 400
 
     try:
-        salary = float(data.get("salary_per_month", 0))
+        salary = float(data.get("salary_per_month", 0) or 0)
     except (ValueError, TypeError):
-        return jsonify({"error": "Invalid salary amount"}), 400
+        salary = 0
 
     if salary < 0:
-        return jsonify({"error": "Salary cannot be negative"}), 400
+        salary = 0
 
     # Check duplicate employee code (skip own)
     emp_code = (data.get("employee_code") or "").strip()
@@ -170,8 +170,17 @@ def add_salary_payment(eid):
     except (ValueError, TypeError):
         days_attended = total_working_days
 
+    # Use base_salary from request (dynamic per-payment) instead of static employee salary
+    try:
+        base_salary = float(data.get("base_salary", 0) or 0)
+    except (ValueError, TypeError):
+        base_salary = 0
+
+    if base_salary < 0:
+        return jsonify({"error": "Base salary cannot be negative"}), 400
+
     # Calculate processed salary based on attendance
-    processed_salary = round((emp.get("salary_per_month", 0) / total_working_days) * days_attended, 2)
+    processed_salary = round((base_salary / total_working_days) * days_attended, 2)
 
     sid = next_id("salary_payments")
     payment_date = data.get("payment_date", data.get("date", ""))
@@ -182,6 +191,7 @@ def add_salary_payment(eid):
         "payment_date": payment_date,
         "date": payment_date,  # Used by profit/dashboard queries
         "amount_paid": amount,
+        "base_salary": base_salary,
         "total_working_days": total_working_days,
         "days_attended": days_attended,
         "processed_salary": processed_salary,

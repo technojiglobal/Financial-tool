@@ -114,7 +114,9 @@ export default function EmployeeDetail() {
     const allPayments = (employee.salary_payments || []).sort((a, b) =>
         (b.payment_date || b.date || '').localeCompare(a.payment_date || a.date || '')
     );
-    const monthly = Number(employee.salary_per_month || 0);
+    // Use the latest payment's base_salary as the current salary (dynamic)
+    const latestPayment = allPayments.length > 0 ? allPayments[0] : null;
+    const monthly = latestPayment ? Number(latestPayment.base_salary || latestPayment.processed_salary || 0) : 0;
     const totalPaid = allPayments.reduce((s, sp) => {
         if (sp.status === 'pending') return s;
         return s + Number(sp.amount_paid ?? 0);
@@ -325,16 +327,7 @@ export default function EmployeeDetail() {
                             </div>
                         ))}
                     </div>
-                    {employee.salary_breakdown && (
-                        <div style={{ marginTop: 16 }}>
-                            <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', color: 'var(--text-muted)', marginBottom: 6 }}>Salary Breakdown</div>
-                            <div style={{
-                                background: 'var(--gray-50, #f9fafb)', padding: '12px 16px', borderRadius: 10,
-                                fontFamily: 'monospace', fontSize: '0.85rem', lineHeight: 1.7, color: 'var(--text-secondary)',
-                                whiteSpace: 'pre-wrap', border: '1px solid var(--gray-200)'
-                            }}>{employee.salary_breakdown}</div>
-                        </div>
-                    )}
+
 
                     {/* Edit Payment Modal */}
                     {editPayment && (

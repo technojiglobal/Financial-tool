@@ -12,6 +12,7 @@ export default function SalaryForm() {
         salary_month: new Date().toISOString().slice(0, 7),
         total_working_days: '22',
         days_attended: '22',
+        base_salary: '',
         status: 'paid',
         note: ''
     });
@@ -41,8 +42,8 @@ export default function SalaryForm() {
 
     const fmt = (n) => '₹' + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
 
-    // Compute processed salary based on attendance
-    const baseSalary = Number(employee?.salary_per_month || 0);
+    // Compute processed salary based on attendance using the entered base salary
+    const baseSalary = Number(form.base_salary || 0);
     const totalDays = Math.max(1, Number(form.total_working_days) || 1);
     const daysAttended = Math.min(totalDays, Math.max(0, Number(form.days_attended) || 0));
     const perDaySalary = baseSalary / totalDays;
@@ -61,12 +62,17 @@ export default function SalaryForm() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!baseSalary || baseSalary <= 0) {
+            alert('Please enter a valid base salary for this month.');
+            return;
+        }
         setLoading(true);
         try {
             await api.addSalaryPayment(empId, {
                 ...form,
                 month: form.salary_month,
                 date: form.payment_date,
+                base_salary: baseSalary,
                 total_working_days: form.total_working_days,
                 days_attended: form.days_attended,
                 processed_salary: processedSalary,
@@ -78,12 +84,13 @@ export default function SalaryForm() {
         finally { setLoading(false); }
     };
 
-    // Auto-fill amount when days change (only if user hasn't manually edited the amount)
+    // Auto-fill amount when days or base salary change (only if user hasn't manually edited the amount)
     const handleDaysChange = (key, val) => {
         const newForm = { ...form, [key]: val };
+        const newBaseSalary = Number(key === 'base_salary' ? val : newForm.base_salary) || 0;
         const newTotalDays = Math.max(1, Number(key === 'total_working_days' ? val : newForm.total_working_days) || 1);
         const newDaysAttended = Math.min(newTotalDays, Math.max(0, Number(key === 'days_attended' ? val : newForm.days_attended) || 0));
-        const newProcessed = Math.round((baseSalary / newTotalDays) * newDaysAttended * 100) / 100;
+        const newProcessed = Math.round((newBaseSalary / newTotalDays) * newDaysAttended * 100) / 100;
         // Only auto-fill amount if user hasn't manually edited it, and status is not pending
         if (!manualAmount.current && newForm.status !== 'pending') {
             newForm.amount_paid = String(newProcessed);
@@ -121,7 +128,7 @@ export default function SalaryForm() {
                     <div>
                         <strong>{employee.name}</strong> ({employee.employee_code})<br />
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                            Base monthly salary: <strong>{fmt(employee.salary_per_month)}</strong> &nbsp;|&nbsp; Total paid: <span style={{ color: 'var(--success)' }}>{fmt(employee.total_paid)}</span>
+                            Total paid: <span style={{ color: 'var(--success)' }}>{fmt(employee.total_paid)}</span>
                         </span>
                     </div>
                 </div>
@@ -180,6 +187,27 @@ export default function SalaryForm() {
                             </div>
                         </div>
 
+                        {/* Base Salary Input */}
+                        <div className="form-section-title" style={{ marginTop: 24 }}>
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF4444', display: 'inline-block', marginRight: 8 }}></span>
+                            Base Salary for this Month
+                        </div>
+                        <div className="form-row">
+                            <div className="form-group">
+                                <label>Monthly Base Salary *</label>
+                                <div style={{ position: 'relative' }}>
+                                    <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.9rem' }}>₹</span>
+                                    <input type="number" min="0" step="any" className="form-control" style={{ paddingLeft: 32 }}
+                                        value={form.base_salary}
+                                        onChange={e => handleDaysChange('base_salary', e.target.value)}
+                                        required placeholder="e.g. 25000" />
+                                </div>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+                                    💡 Enter the base salary for this month. This can change every month.
+                                </span>
+                            </div>
+                        </div>
+
                         {/* Attendance Section */}
                         <div className="form-section-title" style={{ marginTop: 24 }}>
                             <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B', display: 'inline-block', marginRight: 8 }}></span>
@@ -199,7 +227,7 @@ export default function SalaryForm() {
                         </div>
 
                         {/* Salary Calculation Summary */}
-                        {employee && (
+                        {baseSalary > 0 && (
                             <div style={{
                                 background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
                                 border: '1px solid #bae6fd', borderRadius: 12,
@@ -209,6 +237,9 @@ export default function SalaryForm() {
                                     💰 Salary Calculation
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px 20px', fontSize: '0.84rem' }}>
+                                    <div style={{ color: 'var(--text-secondary)' }}>
+                                        Base Salary: <strong style={{ color: '#0369a1' }}>{fmt(baseSalary)}</strong>
+                                    </div>
                                     <div style={{ color: 'var(--text-secondary)' }}>
                                         Per Day Salary: <strong style={{ color: '#0369a1' }}>{fmt(perDaySalary)}</strong>
                                     </div>

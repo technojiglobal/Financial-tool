@@ -69,11 +69,12 @@ export default function Salaries() {
 
     // Per-employee calculations for the selected month
     const getEmpMonthData = (emp) => {
-        const monthly = Number(emp.salary_per_month || 0);
         const payments = (emp.salary_payments || []).filter(sp => {
             const m = sp.month || sp.salary_month || '';
             return m.startsWith(curMonth);
         });
+        // Monthly base salary from the latest payment for this month (dynamic)
+        const monthly = payments.length > 0 ? Number(payments[0].base_salary || payments[0].processed_salary || 0) : 0;
         // Paid: sum of amount_paid for non-pending payments only
         const paid = payments.reduce((s, sp) => {
             if (sp.status === 'pending') return s;
@@ -99,10 +100,24 @@ export default function Salaries() {
         return true;
     });
 
-    // Summary stats
-    const totalActual = employees.reduce((s, e) => s + Number(e.salary_per_month || 0), 0);
+    // Summary stats for selected month
+    const totalActual = employees.reduce((s, e) => s + getEmpMonthData(e).monthly, 0);
     const totalPaid = employees.reduce((s, e) => s + getEmpMonthData(e).paid, 0);
     const totalPending = employees.reduce((s, e) => s + getEmpMonthData(e).pending, 0);
+
+    // Overall lifetime stats (all payments, irrespective of month/year)
+    const overallTotalBaseSalary = employees.reduce((s, emp) => {
+        return s + (emp.salary_payments || []).reduce((ps, sp) => ps + Number(sp.base_salary || sp.processed_salary || 0), 0);
+    }, 0);
+    const overallTotalPaid = employees.reduce((s, emp) => {
+        return s + (emp.salary_payments || []).reduce((ps, sp) => {
+            if (sp.status === 'pending') return ps;
+            return ps + Number(sp.amount_paid ?? 0);
+        }, 0);
+    }, 0);
+    const overallTotalPending = employees.reduce((s, emp) => {
+        return s + (emp.salary_payments || []).reduce((ps, sp) => ps + calcPaymentPending(sp), 0);
+    }, 0);
 
     // Years range
     const years = [];
@@ -116,7 +131,25 @@ export default function Salaries() {
                 <Link to="/salaries/new" className="btn btn-primary">+ Add Employee</Link>
             </div>
 
-            {/* Summary Cards */}
+            {/* Overall Lifetime Summary Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 16 }}>
+                {[
+                    { label: 'Total Employees (Overall)', value: employees.length, icon: '👥', color: '#6366f1', bg: '#EEF2FF' },
+                    { label: 'Total Actual Salary (Overall)', value: fmt(overallTotalBaseSalary), icon: '🏦', color: '#715FF1', bg: '#F0ECFF' },
+                    { label: 'Total Salary Paid (Overall)', value: fmt(overallTotalPaid), icon: '✅', color: '#10B981', bg: '#D1FAE5' },
+                    { label: 'Total Pending (Overall)', value: fmt(overallTotalPending), icon: '📋', color: '#EF4444', bg: '#FEE2E2' },
+                ].map((c, i) => (
+                    <div key={`overall-${i}`} className="card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: `3px solid ${c.color}` }}>
+                        <div>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.4px', marginBottom: 4 }}>{c.label}</div>
+                            <div style={{ fontSize: '1.4rem', fontWeight: 700, color: c.color }}>{c.value}</div>
+                        </div>
+                        <div style={{ width: 42, height: 42, borderRadius: 12, background: c.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>{c.icon}</div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Monthly Summary Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
                 {[
                     { label: 'Total Employees', value: employees.length, icon: '👥', color: '#6366f1', bg: '#EEF2FF' },
@@ -124,7 +157,7 @@ export default function Salaries() {
                     { label: 'Total Salary Paid', value: fmt(totalPaid), icon: '✅', color: '#10B981', bg: '#D1FAE5' },
                     { label: 'Total Pending Amount', value: fmt(totalPending), icon: '📋', color: '#EF4444', bg: '#FEE2E2' },
                 ].map((c, i) => (
-                    <div key={i} className="card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: `3px solid ${c.color}` }}>
+                    <div key={`monthly-${i}`} className="card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: `3px solid ${c.color}` }}>
                         <div>
                             <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.4px', marginBottom: 4 }}>{c.label}</div>
                             <div style={{ fontSize: '1.4rem', fontWeight: 700, color: c.color }}>{c.value}</div>
