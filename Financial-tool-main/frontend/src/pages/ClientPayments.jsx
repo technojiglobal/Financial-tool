@@ -46,9 +46,9 @@ export default function ClientPayments() {
                             <div className="project-card-summary" onClick={() => toggle(p.id)}>
                                 <div className="project-card-toggle">{isOpen ? '▼' : '▶'}</div>
                                 <div className="project-card-main">
-                                    <div className="project-card-title">{p.client_name}</div>
+                                    <div className="project-card-title">{p.project_name}</div>
                                     <div className="project-card-subtitle">
-                                        {p.project_name}
+                                        {p.client_name}
                                         {Number(p.amc_amount) > 0 && <span style={{ marginLeft: 8, fontSize: '0.72rem', padding: '2px 8px', borderRadius: 4, background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 600 }}>AMC: {fmt(p.amc_amount)}</span>}
                                     </div>
                                 </div>
@@ -66,8 +66,12 @@ export default function ClientPayments() {
                                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>paid</span>
                                 </div>
                                 <div className="project-card-balance-info">
-                                    <span style={{ color: p.balance > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 600 }}>{fmt(p.balance)}</span>
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>balance</span>
+                                    <span style={{ color: p.balance > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 600 }}>
+                                        {p.balance < 0 ? fmt(Math.abs(p.balance)) : fmt(p.balance)}
+                                    </span>
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                        {p.balance < 0 ? 'AMC' : 'balance'}
+                                    </span>
                                 </div>
                                 <div className="project-card-actions" onClick={e => e.stopPropagation()}>
                                     <Link to={`/payments/${p.id}/pay`} className="btn btn-sm btn-success">+ Paid</Link>

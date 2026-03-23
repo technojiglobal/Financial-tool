@@ -131,11 +131,7 @@ def add_payment(pid):
     if not data.get("date"):
         return jsonify({"error": "Payment date is required"}), 400
 
-    # Check for overpayment
-    existing_paid = sum(p.get("paid_amount", 0) for p in db.payments.find({"project_id": pid}, {"paid_amount": 1}))
-    total_amount = project.get("total_amount", 0)
-    if total_amount > 0 and (existing_paid + paid_amount) > total_amount * 1.5:
-        return jsonify({"error": f"Warning: This payment would exceed 150% of the project total (₹{total_amount}). Please verify."}), 400
+    # Removed the 150% overpayment limit as per user request
 
     pay_id = next_id("payments")
     doc = {

@@ -49,6 +49,12 @@ def dashboard():
     month_net_profit = month_revenue - month_salaries - month_expenses
     month_margin = round((month_net_profit / month_revenue * 100), 1) if month_revenue > 0 else 0
 
+    # Lifetime totals
+    lifetime_revenue = sum(p.get("paid_amount", 0) for p in db.payments.find({}, {"paid_amount": 1}))
+    lifetime_salaries = sum(sp.get("amount_paid", 0) for sp in db.salary_payments.find({"status": {"$ne": "pending"}}, {"amount_paid": 1}))
+    lifetime_expenses = sum(e.get("amount", 0) for e in db.expenses.find({}, {"amount": 1}))
+    lifetime_net_profit = lifetime_revenue - lifetime_salaries - lifetime_expenses
+
     # Active projects count
     active_projects = db.projects.count_documents({})
 
@@ -123,6 +129,10 @@ def dashboard():
         "month_salaries": month_salaries,
         "month_expenses": month_expenses,
         "month_margin": month_margin,
+        "lifetime_revenue": lifetime_revenue,
+        "lifetime_salaries": lifetime_salaries,
+        "lifetime_expenses": lifetime_expenses,
+        "lifetime_net_profit": lifetime_net_profit,
         "active_projects": active_projects,
         "total_outstanding": total_outstanding,
         "recent_payments": recent_payments,

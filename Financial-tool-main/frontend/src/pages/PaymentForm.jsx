@@ -63,7 +63,7 @@ export default function PaymentForm() {
                     <div>
                         <strong>{project.project_name}</strong> — {project.client_name}<br />
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                            Total: {fmt(project.total_amount)} &nbsp;|&nbsp; Paid: <span style={{ color: 'var(--success)' }}>{fmt(project.total_paid)}</span> &nbsp;|&nbsp; Balance: <span style={{ color: 'var(--danger)' }}>{fmt(project.balance)}</span>
+                            Total: {fmt(project.total_amount)} &nbsp;|&nbsp; Paid: <span style={{ color: 'var(--success)' }}>{fmt(project.total_paid)}</span> &nbsp;|&nbsp; {project.balance < 0 ? 'AMC' : 'Balance'}: <span style={{ color: project.balance < 0 ? 'var(--success)' : 'var(--danger)' }}>{project.balance < 0 ? fmt(Math.abs(project.balance)) : fmt(project.balance)}</span>
                         </span>
                     </div>
                 </div>

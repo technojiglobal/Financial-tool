@@ -113,10 +113,27 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* Profit Cards */}
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 12, position: 'relative', zIndex: 1 }}>Overall Lifetime Overview</h3>
                 <div style={{
                     display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14,
-                    marginTop: 28, position: 'relative', zIndex: 1
+                    marginBottom: 28, position: 'relative', zIndex: 1
+                }}>
+                    <ProfitTile emoji="💰" label="Total Revenue" value={fmt(data.lifetime_revenue)} accent="#5EEAD4" />
+                    <ProfitTile emoji="👥" label="Total Salaries" value={fmt(data.lifetime_salaries)} accent="#FCD34D" />
+                    <ProfitTile emoji="📋" label="Total Expenses" value={fmt(data.lifetime_expenses)} accent="#FDA4AF" />
+                    <ProfitTile
+                        emoji={data.lifetime_net_profit >= 0 ? '📈' : '📉'}
+                        label="Total Net Profit"
+                        value={fmt(data.lifetime_net_profit)}
+                        accent={data.lifetime_net_profit >= 0 ? '#10B981' : '#F43F5E'}
+                        highlight
+                    />
+                </div>
+
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 12, position: 'relative', zIndex: 1 }}>{monthLabel} Overview</h3>
+                <div style={{
+                    display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14,
+                    position: 'relative', zIndex: 1
                 }}>
                     <ProfitTile emoji="💰" label="Revenue" value={fmt(data.month_revenue)} accent="#60A5FA" />
                     <ProfitTile emoji="👥" label="Salaries" value={fmt(data.month_salaries)} accent="#FBBF24" />
