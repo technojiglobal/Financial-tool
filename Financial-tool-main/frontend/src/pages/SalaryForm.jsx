@@ -216,13 +216,13 @@ export default function SalaryForm() {
                         <div className="form-row">
                             <div className="form-group">
                                 <label>Total Working Days *</label>
-                                <input type="number" min="1" max="31" className="form-control" value={form.total_working_days}
+                                <input type="number" min="1" max="31" step="0.5" className="form-control" value={form.total_working_days}
                                     onChange={e => handleDaysChange('total_working_days', e.target.value)} required placeholder="e.g. 22" />
                             </div>
                             <div className="form-group">
                                 <label>Days Employee Attended *</label>
-                                <input type="number" min="0" max={form.total_working_days || 31} className="form-control" value={form.days_attended}
-                                    onChange={e => handleDaysChange('days_attended', e.target.value)} required placeholder="e.g. 20" />
+                                <input type="number" min="0" max={form.total_working_days || 31} step="0.5" className="form-control" value={form.days_attended}
+                                    onChange={e => handleDaysChange('days_attended', e.target.value)} required placeholder="e.g. 20.5" />
                             </div>
                         </div>
 

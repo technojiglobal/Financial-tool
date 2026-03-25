@@ -67,6 +67,11 @@ export default function Salaries() {
         return Math.max(0, processed - paidAmt); // shortfall is pending
     };
 
+    // Helper: get total pending across ALL months for an employee
+    const getEmpAllMonthsPending = (emp) => {
+        return (emp.salary_payments || []).reduce((sum, sp) => sum + calcPaymentPending(sp), 0);
+    };
+
     // Per-employee calculations for the selected month
     const getEmpMonthData = (emp) => {
         const payments = (emp.salary_payments || []).filter(sp => {
@@ -92,7 +97,8 @@ export default function Salaries() {
     const filteredEmployees = employees.filter(emp => {
         const { pending, payments } = getEmpMonthData(emp);
         if (filter === 'fully_paid' && !(pending === 0 && payments.length > 0)) return false;
-        if (filter === 'pending' && !(pending > 0)) return false;
+        // When pending filter is active, show employees with pending from ANY month
+        if (filter === 'pending' && !(getEmpAllMonthsPending(emp) > 0)) return false;
         if (search) {
             const q = search.toLowerCase();
             if (!(emp.name || '').toLowerCase().includes(q) && !(emp.employee_code || '').toLowerCase().includes(q)) return false;
@@ -219,6 +225,8 @@ export default function Salaries() {
                                 </td></tr>
                             ) : filteredEmployees.map(emp => {
                                 const { monthly, paid, pending, totalWorkingDays, daysAttended } = getEmpMonthData(emp);
+                                // When pending filter is active, show all-months pending
+                                const displayPending = filter === 'pending' ? getEmpAllMonthsPending(emp) : pending;
                                 return (
                                     <tr key={emp.id}>
                                         <td>
@@ -246,7 +254,7 @@ export default function Salaries() {
                                             )}
                                         </td>
                                         <td style={{ fontWeight: 600, color: '#10B981' }}>{fmt(paid)}</td>
-                                        <td style={{ fontWeight: 600, color: pending > 0 ? '#EF4444' : '#10B981' }}>{fmt(pending)}</td>
+                                        <td style={{ fontWeight: 600, color: displayPending > 0 ? '#EF4444' : '#10B981' }}>{fmt(displayPending)}</td>
                                         <td>
                                             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                                                 <Link to={`/salaries/${emp.id}/details`} className="btn btn-sm btn-outline" title="View History" style={{ padding: '4px 8px' }}>👁️</Link>

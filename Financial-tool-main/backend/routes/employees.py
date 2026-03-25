@@ -160,13 +160,13 @@ def add_salary_payment(eid):
     if not data.get("date") and not data.get("payment_date"):
         return jsonify({"error": "Payment date is required"}), 400
 
-    # Parse attendance fields
+    # Parse attendance fields (float to support half-day leaves)
     try:
-        total_working_days = max(1, min(31, int(float(data.get("total_working_days", 22) or 22))))
+        total_working_days = max(1.0, min(31.0, float(data.get("total_working_days", 22) or 22)))
     except (ValueError, TypeError):
-        total_working_days = 22
+        total_working_days = 22.0
     try:
-        days_attended = max(0, min(total_working_days, int(float(data.get("days_attended", total_working_days) or total_working_days))))
+        days_attended = max(0.0, min(total_working_days, float(data.get("days_attended", total_working_days) or total_working_days)))
     except (ValueError, TypeError):
         days_attended = total_working_days
 
